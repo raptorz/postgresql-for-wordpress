@@ -470,6 +470,12 @@
 				$sql = str_replace(' comment_id ', ' comment_ID ', $sql);
 		}
 		// Fix tables listing
+                elseif( 0 === strpos($sql, 'SHOW FULL COLUMN'))
+                {
+                    $logto = 'SHOWFULL';
+                    $sql = str_replace( 'SHOW FULL COLUMNS FROM ', 'SELECT column_name FROM information_schema.columns WHERE table_name = ', $sql);
+                    $sql = str_replace( '`', "'", $sql );
+                }
 		elseif( 0 === strpos($sql, 'SHOW TABLES'))
 		{
 			$logto = 'SHOWTABLES';
