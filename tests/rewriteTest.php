@@ -34,6 +34,28 @@ final class rewriteTest extends TestCase
         $this->assertSame(trim($expected), trim($postgresql));
     }
 
+    public function test_it_rewrites_wordpress_monthly_archive_query(): void
+    {
+        $sql = "SELECT YEAR(post_date) AS `year`, MONTH(post_date) AS `month`, count(ID) as posts FROM wp_posts WHERE post_type = 'post' AND post_status = 'publish' GROUP BY YEAR(post_date), MONTH(post_date) ORDER BY post_date DESC";
+        $expected = "SELECT EXTRACT(YEAR FROM post_date) AS year, EXTRACT(MONTH FROM post_date) AS month, count( \"ID\" ) as posts FROM wp_posts WHERE post_type = 'post' AND post_status = 'publish' GROUP BY EXTRACT(YEAR FROM post_date), EXTRACT(MONTH FROM post_date) ORDER BY EXTRACT(YEAR FROM post_date) DESC, EXTRACT(MONTH FROM post_date) DESC";
+
+        $postgresql = pg4wp_rewrite($sql);
+
+        $this->assertSame($expected, $postgresql);
+    }
+
+    public function test_it_rewrites_show_tables_queries(): void
+    {
+        $this->assertSame(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public';",
+            pg4wp_rewrite('SHOW TABLES')
+        );
+        $this->assertSame(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'wp_options';",
+            pg4wp_rewrite("SHOW TABLES LIKE 'wp_options'")
+        );
+    }
+
     public function test_it_handles_auto_increment()
     {
         $sql = <<<SQL

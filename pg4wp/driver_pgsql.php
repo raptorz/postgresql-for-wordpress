@@ -513,7 +513,7 @@ function wpsqli_query(&$connection, $query, $result_mode = 0)
     // Check if a connection to Postgres database is established
     if (!$connection) {
         // Store SQL query for later execution when connection is available
-        $GLOBALS['pg4wp_pre_sql'][] = $sql;
+        $GLOBALS['pg4wp_pre_sql'][] = $query;
         return true;
     }
 
@@ -545,16 +545,18 @@ function wpsqli_query(&$connection, $query, $result_mode = 0)
     $GLOBALS['pg4wp_conn'] = $connection;
     $GLOBALS['pg4wp_result'] = $result;
 
-    if (false !== strpos($sql, "INSERT INTO")) {
+    if ($result !== false && false !== strpos($sql, "INSERT INTO")) {
         $matches = array();
         preg_match("/^INSERT INTO\s+`?([a-z0-9_]+)`?/i", $query, $matches);
-        $tableName = $matches[1];
+        $tableName = $matches[1] ?? null;
 
-        if (false !== strpos($sql, "RETURNING")) {
+        if ($tableName !== null && false !== strpos($sql, "RETURNING")) {
             $primaryKey = get_primary_key_for_table($connection, $tableName);
             $row = pg_fetch_assoc($result);
 
-            $GLOBALS['pg4wp_ins_id'] = $row[$primaryKey];
+            if ($primaryKey !== null && is_array($row) && array_key_exists($primaryKey, $row)) {
+                $GLOBALS['pg4wp_ins_id'] = $row[$primaryKey];
+            }
         }
     }
 

@@ -44,6 +44,12 @@ class SelectSQLRewriter extends AbstractSQLRewriter
             throw new Exception("Unsupported call to information_schema, this probably won't work correctly and needs to be specifically handled, open a github issue with the SQL");
         }
 
+        // WordPress archive queries group posts by year and month but order by
+        // the raw post_date column. PostgreSQL requires the ORDER BY expression
+        // to be part of the grouped result, so order by the same date parts.
+        $sql = str_replace('ORDER BY post_date DESC', 'ORDER BY YEAR(post_date) DESC, MONTH(post_date) DESC', $sql);
+        $sql = str_replace('ORDER BY post_date ASC', 'ORDER BY YEAR(post_date) ASC, MONTH(post_date) ASC', $sql);
+
         $sql = $this->ensureOrderByInSelect($sql);
 
         // Handle +0 casting in order by
@@ -117,8 +123,6 @@ class SelectSQLRewriter extends AbstractSQLRewriter
             'DAY('			=> 'EXTRACT(DAY FROM ',
         );
 
-        $sql = str_replace('ORDER BY post_date DESC', 'ORDER BY YEAR(post_date) DESC, MONTH(post_date) DESC', $sql);
-        $sql = str_replace('ORDER BY post_date ASC', 'ORDER BY YEAR(post_date) ASC, MONTH(post_date) ASC', $sql);
         $sql = str_replace(array_keys($date_funcs), array_values($date_funcs), $sql);
         $curryear = date('Y');
         $sql = str_replace('FROM \'' . $curryear, 'FROM TIMESTAMP \'' . $curryear, $sql);
@@ -197,21 +201,18 @@ class SelectSQLRewriter extends AbstractSQLRewriter
         // Extract the SELECT and ORDER BY clauses
         preg_match('/SELECT\s+(.*?)\s+FROM/si', $sql, $selectMatches);
         preg_match('/ORDER BY(.*?)(ASC|DESC|$)/si', $sql, $orderMatches);
-        preg_match('/GROUP BY(.*?)(ASC|DESC|$)/si', $sql, $groupMatches);
-
         // If the SELECT clause is missing, return the original query
         if (!$selectMatches) {
             return $sql;
         }
 
-        // If both ORDER BY and GROUP BY clauses are missing, return the original query
-        if (!$orderMatches && !$groupMatches) {
+        // If the ORDER BY clause is missing, return the original query
+        if (!$orderMatches) {
             return $sql;
         }
 
         $selectClause = trim($selectMatches[1]);
         $orderByClause = $orderMatches ? trim($orderMatches[1]) : null;
-        $groupClause = $groupMatches ? trim($groupMatches[1]) : null;
         $modified = false;
 
         // Check for wildcard in SELECT
@@ -224,19 +225,12 @@ class SelectSQLRewriter extends AbstractSQLRewriter
             $orderByColumns = explode(',', $orderByClause);
             foreach ($orderByColumns as $col) {
                 $col = trim($col);
-                if (strpos($selectClause, $col) === false) {
-                    $selectClause .= ', ' . $col;
-                    $modified = true;
-                }
-            }
-        }
-
-        // Handle GROUP BY columns
-        if ($groupClause && !$modified) {
-            $groupColumns = explode(',', $groupClause);
-            foreach ($groupColumns as $col) {
-                $col = trim($col);
-                if (strpos($selectClause, $col) === false) {
+                // Treat formatting-only whitespace differences inside SQL
+                // expressions as equivalent (for example YEAR( post_date )
+                // and YEAR(post_date)).
+                $normalizedSelectClause = preg_replace('/\s+/', '', $selectClause);
+                $normalizedColumn = preg_replace('/\s+/', '', $col);
+                if (strpos($normalizedSelectClause, $normalizedColumn) === false) {
                     $selectClause .= ', ' . $col;
                     $modified = true;
                 }
@@ -281,6 +275,13 @@ class SelectSQLRewriter extends AbstractSQLRewriter
     {
         // Check for system or session variables
         if (preg_match('/@@[a-zA-Z0-9_]+/', $sql)) {
+            return $sql;
+        }
+
+        // This helper only adds a missing GROUP BY clause. Reconstructing a
+        // query that already has one can drop or corrupt its GROUP BY/ORDER BY
+        // tail, so leave existing grouped queries intact.
+        if (preg_match('/\bGROUP\s+BY\b/i', $sql)) {
             return $sql;
         }
 

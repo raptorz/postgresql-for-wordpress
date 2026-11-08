@@ -19,6 +19,7 @@ it replaces calls to mysqli_ with wpsqli_ which then are implemented by the driv
 ### Supported Wordpress Versions
 
 This plugin has been tested against 
+- Wordpress 7.1.4 (v3 branch)
 - Wordpress 6.5.3, 6.4.3 (v3 branch)
 - Wordpress 6.3.2 (v2 branch)
 
@@ -28,7 +29,7 @@ This plugin requires PHP 8.1 or greater
 
 ### Supported PostgreSQL versions
 
-This plugin has been tested on PostgreSQL 14.2
+This plugin has been tested on PostgreSQL 14.24
 
 ### Plugin Support
 
@@ -84,6 +85,9 @@ PG4WP is licensed under the [GNU GPL](http://www.gnu.org/licenses/gpl.html "GNU 
 ### Changelog
 
 #### Latest Changes
+- Avoided insert-ID warnings when WordPress probes tables that do not yet exist during installation
+- Fixed `SHOW TABLES` schema handling and preserved optional `LIKE` filters used during installation
+- Fixed WordPress archive queries that group by year/month and order by `post_date`, which previously generated invalid PostgreSQL SQL
 - Fixed issue with SQL DELETE query rewriting to use DB_PREFIX consistently, which previously caused PostgreSQL syntax errors due to hardcoded table prefixes
 
 ### Contributors
