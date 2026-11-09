@@ -41,6 +41,13 @@ class SelectSQLRewriter extends AbstractSQLRewriter
                 return $sql;
             }
 
+            // WordPress core checks whether any default tables use MyISAM
+            // before sending update telemetry. PostgreSQL has no MyISAM
+            // storage engine, so the equivalent result is always empty.
+            if (preg_match('/\bSELECT\s+TABLE_NAME\s+FROM\s+information_schema\.TABLES\b.*\bENGINE\s*=\s*[\'\"]MyISAM[\'\"]/is', $sql)) {
+                return 'SELECT tablename AS "TABLE_NAME" FROM pg_tables WHERE false;';
+            }
+
             throw new Exception("Unsupported call to information_schema, this probably won't work correctly and needs to be specifically handled, open a github issue with the SQL");
         }
 

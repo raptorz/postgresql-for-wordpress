@@ -85,6 +85,7 @@ PG4WP is licensed under the [GNU GPL](http://www.gnu.org/licenses/gpl.html "GNU 
 ### Changelog
 
 #### Latest Changes
+- Handled the WordPress core MyISAM telemetry query on PostgreSQL so the Updates admin page can load
 - Avoided insert-ID warnings when WordPress probes tables that do not yet exist during installation
 - Fixed `SHOW TABLES` schema handling and preserved optional `LIKE` filters used during installation
 - Fixed WordPress archive queries that group by year/month and order by `post_date`, which previously generated invalid PostgreSQL SQL

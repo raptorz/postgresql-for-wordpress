@@ -56,6 +56,16 @@ final class rewriteTest extends TestCase
         );
     }
 
+    public function test_it_returns_no_myisam_tables_for_wordpress_update_checks(): void
+    {
+        $sql = "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'wordpress' AND TABLE_NAME IN ('wp_posts','wp_options') AND ENGINE = 'MyISAM';";
+
+        $this->assertSame(
+            'SELECT tablename AS "TABLE_NAME" FROM pg_tables WHERE false;',
+            pg4wp_rewrite($sql)
+        );
+    }
+
     public function test_it_handles_auto_increment()
     {
         $sql = <<<SQL
